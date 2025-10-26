@@ -4,7 +4,7 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const JobMatcher = require('../services/jobMatcher');
 const { Resume, Job } = require('../models/Resume');
-
+  
 router.get('/search', auth, async (req, res) => {
   try {
     const { 
