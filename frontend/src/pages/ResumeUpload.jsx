@@ -76,11 +76,26 @@ const ResumeUpload = () => {
     setUploading(true);
     setError('');
 
+    console.log('📤 Uploading file:', file.name);
     const result = await uploadResume(file);
 
+    console.log('📥 Upload result:', result);
+
     if (result.success) {
-      navigate(`/resume/${result.data.resumeId}`);
+      const resumeId = result.data?.resumeId || result.resumeId;
+      console.log('✅ Resume ID:', resumeId);
+      
+      if (resumeId) {
+        navigate(`/resume/${resumeId}`);
+      } else {
+        console.error('❌ No resume ID in response:', result);
+        setError('Upload succeeded but resume ID is missing. Please check dashboard.');
+        setUploading(false);
+        // Navigate to dashboard after 2 seconds
+        setTimeout(() => navigate('/dashboard'), 2000);
+      }
     } else {
+      console.error('❌ Upload failed:', result);
       setError(result.error || 'Failed to upload resume. Please try again.');
       setUploading(false);
     }
