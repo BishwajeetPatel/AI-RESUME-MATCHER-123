@@ -1,9 +1,10 @@
 // src/services/api.js
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-resume-matcher-123-backend.onrender.com/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://ai-resume-matcher-123-backend.onrender.com'
-',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
