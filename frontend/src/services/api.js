@@ -1,7 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-resume-matcher-123-backend.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-resume-matcher-123-backend32.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
