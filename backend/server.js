@@ -23,7 +23,7 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://ai-resume-matcher-12345.onrender.com',  // Your static site
+  'https://ai-resume-matcher-123-frontend12.onrender.com',  // Your static site
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
