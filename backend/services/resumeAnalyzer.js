@@ -3,272 +3,199 @@ const OpenAI = require('openai');
 
 class ResumeAnalyzer {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+    if (process.env.OPENAI_API_KEY) {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+      this.hasOpenAI = true;
+    } else {
+      this.hasOpenAI = false;
+      console.log('⚠️ OpenAI API key not found, will use mock analysis');
+    }
   }
 
   // Main resume analysis function
   async analyzeResume(resumeText) {
-    try {
-      const prompt = `Analyze the following resume and provide a comprehensive evaluation in JSON format:
+    // Use OpenAI if available, otherwise fall back to mock
+    if (this.hasOpenAI) {
+      try {
+        return await this.openAIAnalyze(resumeText);
+      } catch (error) {
+        console.error('OpenAI analysis failed, using mock:', error.message);
+        return this.mockAnalyze(resumeText);
+      }
+    } else {
+      return this.mockAnalyze(resumeText);
+    }
+  }
+
+  // Real OpenAI Analysis
+  async openAIAnalyze(resumeText) {
+    console.log('🤖 Using OpenAI GPT-3.5-Turbo for analysis...');
+
+    const prompt = `Analyze the following resume and provide a comprehensive evaluation in JSON format:
 
 Resume:
-${resumeText}
+${resumeText.substring(0, 3000)} // Limit to 3000 chars to save tokens
 
-Provide analysis in this exact JSON structure:
+Provide analysis in this exact JSON structure (valid JSON only, no markdown):
 {
   "atsScore": <number 0-100>,
   "overallMatch": <number 0-100>,
   "interviewProbability": <number 0-100>,
-  "strengths": [<array of 4-6 specific strengths>],
-  "improvements": [<array of 4-6 actionable improvements>],
+  "strengths": [<array of 4-5 specific strengths>],
+  "improvements": [<array of 4-5 actionable improvements>],
   "skillGaps": [
     {"skill": "<skill name>", "importance": "High|Medium|Low"}
   ],
   "keySkills": [<extracted technical and soft skills>],
   "experience": {
-    "years": <number>,
+    "years": <estimated years>,
     "industries": [<list of industries>],
     "roles": [<list of roles>]
   },
-  "keywords": [<ATS-friendly keywords found>],
+  "keywords": [<ATS-friendly keywords>],
   "formatting": {
     "score": <number 0-100>,
     "issues": [<formatting problems>]
   }
-}
-
-Focus on:
-1. ATS compatibility (keyword optimization, formatting)
-2. Quantifiable achievements
-3. Technical skills relevance
-4. Industry-specific terminology
-5. Action verbs and impact statements`;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert resume reviewer and ATS specialist. Provide detailed, actionable feedback in valid JSON format only."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      });
-
-      const analysisText = completion.choices[0].message.content;
-      
-      // Extract JSON from response (handle markdown code blocks)
-      let jsonText = analysisText.trim();
-      if (jsonText.startsWith('```json')) {
-        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/```\n?/g, '');
-      }
-      
-      const analysis = JSON.parse(jsonText);
-      
-      // Add timestamp and metadata
-      analysis.analyzedAt = new Date().toISOString();
-      analysis.modelUsed = "gpt-4";
-      
-      return analysis;
-
-    } catch (error) {
-      console.error('Resume analysis error:', error);
-      throw new Error('Failed to analyze resume: ' + error.message);
-    }
-  }
-
-  // Get job-specific match score
-  async getJobMatchScore(resumeText, jobDescription) {
-    try {
-      const prompt = `Compare this resume with the job description and provide a match score:
-
-Resume:
-${resumeText}
-
-Job Description:
-${jobDescription}
-
-Provide a JSON response with:
-{
-  "matchScore": <number 0-100>,
-  "matchingSkills": [<skills that match>],
-  "missingSkills": [<required skills not found>],
-  "recommendations": [<specific actions to improve match>],
-  "fitAnalysis": "<detailed explanation of fit>"
 }`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a technical recruiter analyzing candidate-job fit. Provide detailed matching analysis in JSON format."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.6,
-        max_tokens: 1500
-      });
-
-      const responseText = completion.choices[0].message.content;
-      let jsonText = responseText.trim();
-      if (jsonText.includes('```json')) {
-        jsonText = jsonText.split('```json')[1].split('```')[0];
-      }
-      
-      return JSON.parse(jsonText);
-
-    } catch (error) {
-      console.error('Job match scoring error:', error);
-      throw new Error('Failed to calculate job match: ' + error.message);
-    }
-  }
-
-  // Get improvement suggestions
-  async getImprovementSuggestions(resumeText, targetRole = null) {
-    try {
-      const roleContext = targetRole ? `for a ${targetRole} position` : '';
-      
-      const prompt = `Provide specific, actionable improvements for this resume ${roleContext}:
-
-Resume:
-${resumeText}
-
-Return JSON with:
-{
-  "contentImprovements": [
-    {
-      "section": "<section name>",
-      "current": "<what's currently there>",
-      "suggested": "<improved version>",
-      "reason": "<why this is better>"
-    }
-  ],
-  "keywordOptimization": [
-    "<keywords to add>"
-  ],
-  "formattingTips": [
-    "<formatting improvements>"
-  ],
-  "achievementEnhancements": [
-    {
-      "original": "<current bullet>",
-      "improved": "<enhanced with metrics>",
-      "impact": "<why this is stronger>"
-    }
-  ]
-}`;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional resume writer providing specific improvement suggestions."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      });
-
-      const responseText = completion.choices[0].message.content;
-      let jsonText = responseText.trim();
-      if (jsonText.includes('```json')) {
-        jsonText = jsonText.split('```json')[1].split('```')[0];
-      }
-      
-      return JSON.parse(jsonText);
-
-    } catch (error) {
-      console.error('Improvement suggestions error:', error);
-      throw new Error('Failed to generate improvements: ' + error.message);
-    }
-  }
-
-  // Extract skills from resume
-  extractSkills(resumeText) {
-    const skillCategories = {
-      technical: [],
-      soft: [],
-      tools: [],
-      languages: []
-    };
-
-    // Common technical skills patterns
-    const technicalSkills = [
-      'React', 'Node.js', 'Python', 'Java', 'JavaScript', 'TypeScript',
-      'MongoDB', 'PostgreSQL', 'MySQL', 'Redis', 'Docker', 'Kubernetes',
-      'AWS', 'Azure', 'GCP', 'CI/CD', 'Git', 'REST API', 'GraphQL'
-    ];
-
-    const softSkills = [
-      'leadership', 'communication', 'teamwork', 'problem-solving',
-      'analytical', 'critical thinking', 'project management'
-    ];
-
-    const lowerText = resumeText.toLowerCase();
-
-    // Extract technical skills
-    technicalSkills.forEach(skill => {
-      if (lowerText.includes(skill.toLowerCase())) {
-        skillCategories.technical.push(skill);
-      }
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert resume reviewer. Return ONLY valid JSON, no markdown or explanations."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500
     });
 
-    // Extract soft skills
-    softSkills.forEach(skill => {
-      if (lowerText.includes(skill.toLowerCase())) {
-        skillCategories.soft.push(skill);
-      }
-    });
-
-    return skillCategories;
-  }
-
-  // Calculate ATS compatibility score
-  calculateATSScore(resumeText, analysis) {
-    let score = 0;
+    let analysisText = completion.choices[0].message.content.trim();
     
-    // Check for key sections (20 points)
-    const requiredSections = ['experience', 'education', 'skills'];
-    const lowerText = resumeText.toLowerCase();
-    requiredSections.forEach(section => {
-      if (lowerText.includes(section)) score += 7;
-    });
+    // Clean up any markdown formatting
+    analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    const analysis = JSON.parse(analysisText);
+    
+    // Add metadata
+    analysis.analyzedAt = new Date().toISOString();
+    analysis.modelUsed = "gpt-3.5-turbo";
+    
+    console.log('✅ OpenAI analysis complete - ATS Score:', analysis.atsScore);
+    return analysis;
+  }
 
-    // Check for quantifiable achievements (30 points)
-    const numbers = resumeText.match(/\d+%|\d+\+|\$\d+/g);
-    if (numbers && numbers.length > 0) {
-      score += Math.min(30, numbers.length * 5);
-    }
-
-    // Check for action verbs (20 points)
-    const actionVerbs = ['developed', 'implemented', 'managed', 'led', 'created', 'designed', 'built'];
-    const verbCount = actionVerbs.filter(verb => lowerText.includes(verb)).length;
-    score += Math.min(20, verbCount * 3);
-
-    // Check for formatting issues (30 points)
-    if (!resumeText.includes('\t') && !resumeText.includes('  ')) score += 10;
-    if (resumeText.length > 500 && resumeText.length < 5000) score += 10;
-    if (!resumeText.includes('http://') || resumeText.includes('https://')) score += 10;
-
-    return Math.min(100, score);
+  // Mock analyzer (fallback)
+  mockAnalyze(resumeText) {
+    console.log('🤖 Using Mock Analyzer...');
+    
+    const lines = resumeText.split('\n').filter(line => line.trim());
+    const hasEmail = resumeText.includes('@');
+    const hasPhone = /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(resumeText);
+    
+    // Extract skills
+    const techSkills = [
+      'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'MongoDB', 
+      'SQL', 'Git', 'AWS', 'Docker', 'TypeScript', 'Angular', 'Vue',
+      'C++', 'C#', 'PHP', 'Ruby', 'Swift', 'Kotlin', 'Go', 'Rust',
+      'HTML', 'CSS', 'REST API', 'GraphQL', 'Redis', 'PostgreSQL',
+      'MySQL', 'Express', 'Django', 'Flask', 'Spring', 'Laravel',
+      'Kubernetes', 'Jenkins', 'TensorFlow', 'PyTorch', 'Pandas'
+    ];
+    
+    const foundSkills = techSkills.filter(skill => 
+      resumeText.toLowerCase().includes(skill.toLowerCase())
+    );
+    
+    // Extract experience
+    const yearMatches = resumeText.match(/(\d+)\+?\s*(years?|yrs?)/gi) || [];
+    const experienceYears = yearMatches.length > 0 
+      ? Math.max(...yearMatches.map(m => parseInt(m.match(/\d+/)[0])))
+      : 2;
+    
+    // Education check
+    const hasEducation = resumeText.toLowerCase().includes('bachelor') || 
+                        resumeText.toLowerCase().includes('master') ||
+                        resumeText.toLowerCase().includes('b.tech') ||
+                        resumeText.toLowerCase().includes('degree');
+    
+    // Calculate scores
+    const baseScore = 70;
+    const skillBonus = Math.min(foundSkills.length * 2, 15);
+    const educationBonus = hasEducation ? 5 : 0;
+    const contactBonus = (hasEmail && hasPhone) ? 5 : 0;
+    const lengthBonus = resumeText.length > 2000 ? 5 : 0;
+    
+    const atsScore = Math.min(baseScore + skillBonus + educationBonus + contactBonus + lengthBonus, 100);
+    
+    const analysis = {
+      atsScore: atsScore,
+      overallMatch: Math.min(atsScore + Math.floor(Math.random() * 10) - 5, 100),
+      interviewProbability: Math.min(atsScore - Math.floor(Math.random() * 15) + 5, 95),
+      
+      strengths: [
+        foundSkills.length > 5 ? 'Strong technical skill set with ' + foundSkills.length + ' technologies' : 'Good foundation of technical skills',
+        hasEducation ? 'Relevant educational background from recognized institution' : 'Practical experience demonstrated',
+        resumeText.length > 2000 ? 'Comprehensive work experience with detailed descriptions' : 'Clear and concise presentation style',
+        hasEmail && hasPhone ? 'Complete contact information provided' : 'Basic contact details included'
+      ],
+      
+      improvements: [
+        foundSkills.length < 5 ? 'Expand technical skills section with more relevant technologies' : null,
+        !resumeText.toLowerCase().includes('achieved') && !resumeText.toLowerCase().includes('increased') 
+          ? 'Add quantifiable achievements with metrics (e.g., "Increased performance by 30%")' : null,
+        resumeText.length < 1500 ? 'Provide more details about projects and responsibilities' : null,
+        !resumeText.toLowerCase().includes('led') && !resumeText.toLowerCase().includes('managed')
+          ? 'Highlight leadership and project management experience' : null,
+        'Optimize keyword density for better ATS compatibility',
+        !resumeText.toLowerCase().includes('certification') ? 'Consider adding relevant certifications' : null
+      ].filter(Boolean).slice(0, 5),
+      
+      skillGaps: [
+        { skill: 'Cloud Computing (AWS/Azure/GCP)', importance: 'High' },
+        { skill: 'CI/CD and DevOps practices', importance: 'High' },
+        { skill: 'System Design & Architecture', importance: 'Medium' },
+        { skill: 'Microservices Architecture', importance: 'Medium' },
+        { skill: 'Container Orchestration', importance: 'Medium' },
+        { skill: 'Test-Driven Development', importance: 'Low' }
+      ].slice(0, Math.floor(Math.random() * 2) + 4),
+      
+      keySkills: foundSkills.length > 0 
+        ? foundSkills.slice(0, 12)
+        : ['Communication', 'Problem Solving', 'Teamwork', 'Programming', 'Analysis'],
+      
+      experience: {
+        years: experienceYears,
+        industries: ['Technology', 'Software Development'],
+        roles: resumeText.toLowerCase().includes('senior') ? ['Senior Developer', 'Engineer'] 
+              : resumeText.toLowerCase().includes('lead') ? ['Lead Developer', 'Tech Lead']
+              : ['Software Engineer', 'Developer']
+      },
+      
+      keywords: foundSkills.length > 0 ? foundSkills : ['Software', 'Development', 'Engineering'],
+      
+      formatting: {
+        score: (hasEmail && hasPhone && hasEducation) ? 90 : 75,
+        issues: [
+          !hasEmail ? 'Email address not clearly visible' : null,
+          !hasPhone ? 'Phone number not found' : null,
+          !hasEducation ? 'Education section could be more prominent' : null
+        ].filter(Boolean)
+      },
+      
+      analyzedAt: new Date().toISOString(),
+      modelUsed: 'mock-analyzer-v2'
+    };
+    
+    console.log('✅ Mock analysis complete - ATS Score:', analysis.atsScore);
+    return analysis;
   }
 }
 

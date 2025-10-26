@@ -8,8 +8,7 @@ const resumeSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   fileName: {
     type: String,
@@ -61,91 +60,6 @@ const resumeSchema = new mongoose.Schema({
 // Indexes for faster queries
 resumeSchema.index({ userId: 1, uploadedAt: -1 });
 resumeSchema.index({ 'analysis.atsScore': -1 });
-
-// ========================================
-// JOB SCHEMA
-// ========================================
-const jobSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    index: true
-  },
-  company: {
-    type: String,
-    required: true,
-    index: true
-  },
-  location: {
-    type: String,
-    required: true
-  },
-  jobType: {
-    type: String,
-    enum: ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'],
-    default: 'Full-time'
-  },
-  experienceLevel: {
-    type: String,
-    enum: ['Entry', 'Mid', 'Senior', 'Lead', 'Executive'],
-    default: 'Mid'
-  },
-  salary: {
-    min: Number,
-    max: Number,
-    currency: {
-      type: String,
-      default: 'USD'
-    }
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  requiredSkills: {
-    type: [String],
-    default: []
-  },
-  preferredSkills: {
-    type: [String],
-    default: []
-  },
-  experienceRequired: {
-    type: Number,
-    default: 0
-  },
-  benefits: [String],
-  applicationUrl: String,
-  companyLogo: String,
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  postedDate: {
-    type: Date,
-    default: Date.now
-  },
-  expiryDate: Date,
-  applicants: {
-    type: Number,
-    default: 0
-  }
-}, {
-  timestamps: true
-});
-
-// Text index for search functionality
-jobSchema.index({
-  title: 'text',
-  description: 'text',
-  company: 'text'
-});
-
-// Indexes for filtering
-jobSchema.index({ location: 1, jobType: 1 });
-jobSchema.index({ experienceLevel: 1, isActive: 1 });
-jobSchema.index({ postedDate: -1 });
-jobSchema.index({ requiredSkills: 1 });
 
 // ========================================
 // USER SCHEMA
@@ -225,7 +139,91 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Only one index on email - removed duplicate
 userSchema.index({ email: 1 });
+
+// ========================================
+// JOB SCHEMA
+// ========================================
+const jobSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true
+  },
+  company: {
+    type: String,
+    required: true
+  },
+  location: {
+    type: String,
+    required: true
+  },
+  jobType: {
+    type: String,
+    enum: ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'],
+    default: 'Full-time'
+  },
+  experienceLevel: {
+    type: String,
+    enum: ['Entry', 'Mid', 'Senior', 'Lead', 'Executive'],
+    default: 'Mid'
+  },
+  salary: {
+    min: Number,
+    max: Number,
+    currency: {
+      type: String,
+      default: 'USD'
+    }
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  requiredSkills: {
+    type: [String],
+    default: []
+  },
+  preferredSkills: {
+    type: [String],
+    default: []
+  },
+  experienceRequired: {
+    type: Number,
+    default: 0
+  },
+  benefits: [String],
+  applicationUrl: String,
+  companyLogo: String,
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  postedDate: {
+    type: Date,
+    default: Date.now
+  },
+  expiryDate: Date,
+  applicants: {
+    type: Number,
+    default: 0
+  }
+}, {
+  timestamps: true
+});
+
+// Text index for search functionality
+jobSchema.index({
+  title: 'text',
+  description: 'text',
+  company: 'text'
+});
+
+// Indexes for filtering
+jobSchema.index({ location: 1, jobType: 1 });
+jobSchema.index({ experienceLevel: 1, isActive: 1 });
+jobSchema.index({ postedDate: -1 });
+jobSchema.index({ requiredSkills: 1 });
 
 // ========================================
 // EXPORT MODELS

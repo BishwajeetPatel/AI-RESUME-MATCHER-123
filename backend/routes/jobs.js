@@ -3,8 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
 const JobMatcher = require('../services/jobMatcher');
-const Resume = require('../models/Resume');
-const Job = require('../models/Job');
+const { Resume, Job } = require('../models/Resume'); // FIX: Import from models/Resume
 
 // GET /api/jobs/search - Search jobs with filters
 router.get('/search', auth, async (req, res) => {
@@ -18,7 +17,9 @@ router.get('/search', auth, async (req, res) => {
       limit = 20 
     } = req.query;
 
-    const query = {};
+    console.log('🔍 Job search request:', { keywords, location, jobType, experienceLevel });
+
+    const query = { isActive: true }; // Only show active jobs
     
     if (keywords) {
       query.$text = { $search: keywords };
@@ -43,6 +44,8 @@ router.get('/search', auth, async (req, res) => {
 
     const total = await Job.countDocuments(query);
 
+    console.log(`✅ Found ${jobs.length} jobs`);
+
     res.status(200).json({
       jobs,
       pagination: {
@@ -64,7 +67,8 @@ router.post('/match', auth, async (req, res) => {
   try {
     const { resumeId, limit = 10 } = req.body;
 
-    // Get resume
+    console.log('🎯 Job matching request for resume:', resumeId);
+
     const resume = await Resume.findOne({
       _id: resumeId,
       userId: req.user.id
@@ -74,19 +78,20 @@ router.post('/match', auth, async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
 
-    // Get recent jobs
     const jobs = await Job.find({ isActive: true })
       .sort({ postedDate: -1 })
       .limit(50);
 
-    // Match jobs with resume
+    console.log(`📋 Found ${jobs.length} active jobs for matching`);
+
     const matcher = new JobMatcher();
     const matchedJobs = await matcher.matchJobsToResume(resume, jobs);
 
-    // Sort by match score and limit results
     const topMatches = matchedJobs
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, limit);
+
+    console.log(`✅ Matched ${topMatches.length} jobs`);
 
     res.status(200).json({
       matches: topMatches,
@@ -148,7 +153,6 @@ router.post('/:id/analyze-fit', auth, async (req, res) => {
 // POST /api/jobs/bulk-import - Import jobs (admin only)
 router.post('/bulk-import', auth, async (req, res) => {
   try {
-    // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Unauthorized' });
     }
@@ -185,9 +189,7 @@ router.get('/recommendations/:resumeId', auth, async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
 
-    // Get jobs based on skills and experience
     const skills = resume.analysis?.keySkills || [];
-    const experienceYears = resume.analysis?.experience?.years || 0;
 
     const jobs = await Job.find({
       isActive: true,
