@@ -116,6 +116,8 @@ export const useStore = create((set, get) => ({
 
       set({ uploadProgress: 0 });
 
+      console.log('📤 Sending upload request...');
+
       const response = await api.post('/resume/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
@@ -124,14 +126,23 @@ export const useStore = create((set, get) => ({
         }
       });
 
+      console.log('✅ Upload response:', response.data);
+
       // Refresh resumes list
       get().fetchResumes();
 
-      return { success: true, data: response.data };
+      // Return the complete response data
+      return { 
+        success: true, 
+        data: response.data,
+        resumeId: response.data.resumeId // Explicitly extract resumeId
+      };
     } catch (error) {
+      console.error('❌ Upload error:', error);
+      console.error('Error response:', error.response?.data);
       return { 
         success: false, 
-        error: error.response?.data?.error || 'Upload failed' 
+        error: error.response?.data?.error || error.response?.data?.details || 'Upload failed' 
       };
     }
   },
