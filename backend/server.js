@@ -20,8 +20,12 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
+// CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'https://ai-resume-matcher-123-1frontendlatest.onrender.com', // Your Render frontend
+    'http://localhost:3000' // For local development
+  ],
   credentials: true
 }));
 
