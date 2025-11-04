@@ -1,84 +1,91 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    unique: true, // already creates index
-    lowercase: true,
-    trim: true
-  },
-  password: {
-    type: String,
-    required: true
-  },
-  firstName: {
-    type: String,
-    required: true
-  },
-  lastName: {
-    type: String,
-    required: true
-  },
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
-  },
-  profile: {
-    currentTitle: String,
-    experience: Number,
-    location: String,
-    phone: String,
-    linkedin: String,
-    github: String,
-    portfolio: String
-  },
-  preferences: {
-    jobTypes: [String],
-    locations: [String],
-    salaryExpectation: {
-      min: Number,
-      max: Number
-    },
-    remotePreference: {
+const userSchema = new mongoose.Schema(
+  {
+    email: {
       type: String,
-      enum: ['Remote', 'Hybrid', 'On-site', 'Any'],
-      default: 'Any'
-    }
-  },
-  savedJobs: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Job'
-  }],
-  appliedJobs: [{
-    jobId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Job'
+      required: true,
+      unique: true, // already creates index automatically
+      lowercase: true,
+      trim: true
     },
-    appliedAt: Date,
-    status: {
+    password: {
       type: String,
-      enum: ['Applied', 'Reviewing', 'Interview', 'Offer', 'Rejected'],
-      default: 'Applied'
-    }
-  }],
-  isVerified: {
-    type: Boolean,
-    default: false
+      required: true
+    },
+    firstName: {
+      type: String,
+      required: true
+    },
+    lastName: {
+      type: String,
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user'
+    },
+    profile: {
+      currentTitle: String,
+      experience: Number,
+      location: String,
+      phone: String,
+      linkedin: String,
+      github: String,
+      portfolio: String
+    },
+    preferences: {
+      jobTypes: [String],
+      locations: [String],
+      salaryExpectation: {
+        min: Number,
+        max: Number
+      },
+      remotePreference: {
+        type: String,
+        enum: ['Remote', 'Hybrid', 'On-site', 'Any'],
+        default: 'Any'
+      }
+    },
+    savedJobs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Job'
+      }
+    ],
+    appliedJobs: [
+      {
+        jobId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Job'
+        },
+        appliedAt: Date,
+        status: {
+          type: String,
+          enum: ['Applied', 'Reviewing', 'Interview', 'Offer', 'Rejected'],
+          default: 'Applied'
+        }
+      }
+    ],
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    verificationToken: String,
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
+    lastLogin: Date
   },
-  verificationToken: String,
-  resetPasswordToken: String,
-  resetPasswordExpires: Date,
-  lastLogin: Date
-}, {
-  timestamps: true
-});
+  {
+    timestamps: true
+  }
+);
 
-// ❌ REMOVE this line (duplicate index)
-// userSchema.index({ email: 1 });
+// ❌ No need to manually define userSchema.index({ email: 1 })
+// because `unique: true` already creates it automatically.
 
+
+userSchema.index({ email: true}); 
 const User = mongoose.model('User', userSchema);
-
-// ✅ Only export User from this file
-module.exports = { User };
+module.exports = { Resume, Job, User };// what shoul remove in this
