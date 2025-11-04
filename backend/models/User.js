@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true, // already creates index automatically
+      unique: true, // This automatically creates an index
       lowercase: true,
       trim: true
     },
@@ -82,10 +82,5 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// ❌ No need to manually define userSchema.index({ email: 1 })
-// because `unique: true` already creates it automatically.
-
-
-userSchema.index({ email: true}); 
 const User = mongoose.model('User', userSchema);
-module.exports = { Resume, Job, User };// what shoul remove in this
+module.exports = User; // ✅ Export only User
